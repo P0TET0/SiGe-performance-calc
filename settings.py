@@ -12,7 +12,7 @@ T_RANGE_PICKLE_PATH = DATA_DIR / "T_range.pkl"
 XI_F_PICKLE_PATH = DATA_DIR / "xi_F_vals.pkl"
 
 # Predefined composition options for the UI.
-COMPOSITION_OPTIONS = [0.6, 0.7, 0.8, 0.9]
+COMPOSITION_OPTIONS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
 # Fallback settings when temperature-dependent data is unavailable.
 XI_F_FALLBACK_MIN = -20.0
