@@ -20,13 +20,15 @@ PLOT_SPECS: list[dict[str, Any]] = [
         "y_label": "無次元性能指数 ZT",
         "scale": 1.0,
         "clip_bottom_zero": True,
+        "y_scale": "linear",
     },
     {
         "key": "sigma",
         "title": "電気伝導率",
         "y_label": "電気伝導率 σ [S/m]",
         "scale": 1.0,
-        "clip_bottom_zero": True,
+        "clip_bottom_zero": False,
+        "y_scale": "log",
     },
     {
         "key": "alpha",
@@ -34,6 +36,7 @@ PLOT_SPECS: list[dict[str, Any]] = [
         "y_label": "ゼーベック係数 α [mV/K]",
         "scale": 1000.0,  # V/K -> mV/K
         "clip_bottom_zero": False,
+        "y_scale": "linear",
     },
     {
         "key": "lorenz",
@@ -41,6 +44,7 @@ PLOT_SPECS: list[dict[str, Any]] = [
         "y_label": "ローレンツ数 L [WΩ/K^2]",
         "scale": 1.0,
         "clip_bottom_zero": True,
+        "y_scale": "linear",
     },
     {
         "key": "kappa",
@@ -48,6 +52,7 @@ PLOT_SPECS: list[dict[str, Any]] = [
         "y_label": "熱伝導率 κ [W/mK]",
         "scale": 1.0,
         "clip_bottom_zero": True,
+        "y_scale": "linear",
     },
 ]
 
@@ -81,6 +86,7 @@ def build_plot(
     plot_title: str,
     composition: float,
     clip_bottom_zero: bool,
+    y_scale: str,
 ) -> plt.Figure:
     figure, axis = plt.subplots(figsize=(9, 5.2))
 
@@ -102,9 +108,10 @@ def build_plot(
     axis.set_title(
         f"{plot_title} | 組成比(Si$_{{1-y}}$Ge$_{{y}}$) y={composition:.2f}"
     )
+    axis.set_yscale(y_scale)
     axis.grid(True, linestyle=":", alpha=0.6)
     axis.legend(fontsize=9)
-    if clip_bottom_zero:
+    if clip_bottom_zero and y_scale != "log":
         axis.set_ylim(bottom=0)
 
     figure.tight_layout()
@@ -235,6 +242,7 @@ if calculate_button:
                 plot_title=str(spec["title"]),
                 composition=float(composition),
                 clip_bottom_zero=bool(spec["clip_bottom_zero"]),
+                y_scale=str(spec.get("y_scale", "linear")),
             )
             st.pyplot(figure)
 
