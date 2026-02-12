@@ -470,25 +470,70 @@ def _kappa2(s: mp.mpf, xi_f: mp.mpf, t: mp.mpf, y: mp.mpf) -> mp.mpf:
     return _kappa2_e(s, xi_f, t, y) + _kappa2_l(s, xi_f, t, y)
 
 
-def _zt_value(y: mp.mpf, xi_f: mp.mpf, t: mp.mpf) -> float:
+def _to_float_or_nan(value: mp.mpf) -> float:
     try:
-        alpha_value = _alpha2(S_PARAMETER, xi_f, t, y)
-        sigma_value = _sigma2(S_PARAMETER, xi_f, t, y)
-        kappa_value = _kappa2(S_PARAMETER, xi_f, t, y)
-        if not mp.isfinite(kappa_value) or abs(kappa_value) < SMALL:
+        if not mp.isfinite(value):
             return float("nan")
-        zt = alpha_value**2 * sigma_value * t / kappa_value
-        if not mp.isfinite(zt):
-            return float("nan")
-        return float(zt)
+        return float(value)
     except Exception:
         return float("nan")
 
 
-def simulate_zt(
+@lru_cache(maxsize=65536)
+def _evaluate_properties_cached(
+    y_float: float,
+    xi_f_float: float,
+    temp_float: float,
+) -> tuple[float, float, float, float, float]:
+    y = mp.mpf(y_float)
+    xi_f = mp.mpf(xi_f_float)
+    temp = mp.mpf(temp_float)
+
+    try:
+        sigma_value = _sigma2(S_PARAMETER, xi_f, temp, y)
+        alpha_value = _alpha2(S_PARAMETER, xi_f, temp, y)
+        lorenz_value = _l2(S_PARAMETER, xi_f, temp, y)
+        kappa_value = _kappa2(S_PARAMETER, xi_f, temp, y)
+
+        sigma_float = _to_float_or_nan(sigma_value)
+        alpha_float = _to_float_or_nan(alpha_value)
+        lorenz_float = _to_float_or_nan(lorenz_value)
+        kappa_float = _to_float_or_nan(kappa_value)
+
+        if not mp.isfinite(kappa_value) or abs(kappa_value) < SMALL:
+            zt_float = float("nan")
+        else:
+            zt_value = alpha_value**2 * sigma_value * temp / kappa_value
+            zt_float = _to_float_or_nan(zt_value)
+
+        return sigma_float, alpha_float, lorenz_float, kappa_float, zt_float
+    except Exception:
+        nan = float("nan")
+        return nan, nan, nan, nan, nan
+
+
+def _evaluate_properties(
+    y: mp.mpf,
+    xi_f: mp.mpf,
+    temp: mp.mpf,
+) -> tuple[float, float, float, float, float]:
+    return _evaluate_properties_cached(float(y), float(xi_f), float(temp))
+
+
+def _matrix_to_curves(matrix: np.ndarray) -> dict[str, np.ndarray]:
+    return {
+        "sigma": matrix[:, 0],
+        "alpha": matrix[:, 1],
+        "lorenz": matrix[:, 2],
+        "kappa": matrix[:, 3],
+        "zt": matrix[:, 4],
+    }
+
+
+def simulate_properties(
     composition: float,
     nd_value: float,
-) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+) -> tuple[np.ndarray, dict[str, np.ndarray], dict[str, Any]]:
     composition = float(composition)
     nd_value = float(nd_value)
     nd_candidates = load_nd_candidates(composition)
@@ -499,9 +544,9 @@ def simulate_zt(
     )
     if t_range is not None and xi_values is not None:
         x_axis = np.asarray(t_range, dtype=float)
-        zt_values = np.asarray(
+        property_matrix = np.asarray(
             [
-                _zt_value(y, mp.mpf(float(xi_f)), mp.mpf(float(temp_k)))
+                _evaluate_properties(y, mp.mpf(float(xi_f)), mp.mpf(float(temp_k)))
                 for xi_f, temp_k in zip(xi_values, x_axis, strict=True)
             ],
             dtype=float,
@@ -509,26 +554,37 @@ def simulate_zt(
         labels = {
             "mode": "temperature",
             "x_label": "Temperature [K]",
-            "y_label": "ZT",
             "composition": composition,
             "nd_value": nd_value,
         }
-        return x_axis, zt_values, labels
+        return x_axis, _matrix_to_curves(property_matrix), labels
 
     xi_f_axis = np.linspace(
         XI_F_FALLBACK_MIN, XI_F_FALLBACK_MAX, XI_F_FALLBACK_POINTS, dtype=float
     )
     fixed_temp = mp.mpf(FALLBACK_TEMPERATURE_K)
-    zt_values = np.asarray(
-        [_zt_value(y, mp.mpf(float(xi_f)), fixed_temp) for xi_f in xi_f_axis],
+    property_matrix = np.asarray(
+        [
+            _evaluate_properties(y, mp.mpf(float(xi_f)), fixed_temp)
+            for xi_f in xi_f_axis
+        ],
         dtype=float,
     )
     labels = {
         "mode": "xi_f",
         "x_label": "xi_F",
-        "y_label": "ZT",
         "composition": composition,
         "nd_value": nd_value,
         "temperature_k": float(FALLBACK_TEMPERATURE_K),
     }
-    return xi_f_axis, zt_values, labels
+    return xi_f_axis, _matrix_to_curves(property_matrix), labels
+
+
+def simulate_zt(
+    composition: float,
+    nd_value: float,
+) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    x_axis, curves, labels = simulate_properties(composition, nd_value)
+    zt_labels = dict(labels)
+    zt_labels["y_label"] = "ZT"
+    return x_axis, curves["zt"], zt_labels
