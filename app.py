@@ -32,7 +32,9 @@ def build_plot(
     axis.plot(x_axis, zt_values, color="#005f73", linewidth=2.4)
     axis.set_xlabel(str(labels.get("x_label", "X")))
     axis.set_ylabel(str(labels.get("y_label", "ZT")))
-    axis.set_title(f"組成比 y={composition:.2f}, N_D={nd_value:.2e}")
+    axis.set_title(
+        f"組成比(Si$_{{1-y}}$Ge$_{{y}}$) y={composition:.2f}, N_D={nd_value:.2e}"
+    )
     axis.grid(True, linestyle=":", alpha=0.6)
     axis.set_ylim(bottom=0)
 
