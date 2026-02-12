@@ -6,6 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
+import japanize_matplotlib  # noqa: F401
 
 import simulator
 

@@ -3,3 +3,4 @@ numpy
 mpmath
 scipy
 matplotlib
+japanize-matplotlib
